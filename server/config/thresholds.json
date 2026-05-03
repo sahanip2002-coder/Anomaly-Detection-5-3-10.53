@@ -1,0 +1,6 @@
+{
+    "global": {
+        "cpu_threshold": 85.0,
+        "mem_threshold": 90.0
+    }
+}

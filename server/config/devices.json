@@ -1,0 +1,7 @@
+{
+    "allowed_devices": [
+        "iot-001",
+        "iot-002",
+        "sensor-03"
+    ]
+}

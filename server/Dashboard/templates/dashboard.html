@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>IoTFW SOC Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #07090f;
+  --surface: #0d1321;
+  --surface2: #111827;
+  --border: #1e2d45;
+  --border2: #243450;
+  --accent: #00d4ff;
+  --accent2: #0099bb;
+  --green: #00ff9d;
+  --yellow: #ffd600;
+  --red: #ff3b5c;
+  --text: #c8d8f0;
+  --text2: #6b86a8;
+  --mono: 'Share Tech Mono', monospace;
+  --ui: 'Rajdhani', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--ui);
+  font-size: 14px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,212,255,0.03) 39px, rgba(0,212,255,0.03) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,212,255,0.03) 39px, rgba(0,212,255,0.03) 40px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* HEADER */
+header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(7,9,15,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border2);
+  padding: 0 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 52px;
+}
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--mono); font-size: 15px;
+  letter-spacing: 2px; color: var(--accent);
+}
+.logo-icon {
+  width: 28px; height: 28px;
+  border: 2px solid var(--accent); border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+.header-right {
+  display: flex; align-items: center; gap: 16px;
+  font-family: var(--mono); font-size: 12px; color: var(--text2);
+}
+.live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--green); box-shadow: 0 0 8px var(--green);
+  animation: pulse 1.4s ease-in-out infinite;
+  display: inline-block; margin-right: 5px;
+}
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+/* NAV TABS */
+.nav-tabs {
+  display: flex; background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  position: sticky; top: 52px; z-index: 90;
+}
+.tab-btn {
+  background: none; border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text2); font-family: var(--ui);
+  font-size: 13px; font-weight: 600;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 12px 20px; cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* MAIN */
+main { padding: 16px 20px; position: relative; z-index: 1; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+.section-header {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: 3px; text-transform: uppercase;
+  color: var(--accent2); margin-bottom: 14px;
+}
+.section-header::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, var(--border2), transparent);
+}
+
+/* CARD */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; margin-bottom: 14px; overflow: hidden;
+}
+.card-head {
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface2);
+}
+.card-title {
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: 2px; color: var(--text2); text-transform: uppercase;
+}
+
+/* FLEET TABLE */
+.fleet-table { width: 100%; border-collapse: collapse; font-family: var(--ui); font-size: 13px; }
+.fleet-table thead tr { background: var(--surface2); }
+.fleet-table th {
+  padding: 9px 12px; text-align: left;
+  font-weight: 700; font-size: 11px;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text2); border-bottom: 1px solid var(--border2);
+  white-space: nowrap;
+}
+.fleet-table td {
+  padding: 10px 12px; border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.fleet-table tbody tr { transition: background 0.15s; }
+.fleet-table tbody tr:hover { background: rgba(0,212,255,0.04); }
+.fleet-table tbody tr:last-child td { border-bottom: none; }
+
+/* STATUS BADGE */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 8px; border-radius: 4px;
+  font-family: var(--mono); font-size: 11px;
+  font-weight: 600; letter-spacing: 1px;
+}
+/* Stable = green, Unstable = red, offline = dim red */
+.badge-stable   { background: rgba(0,255,157,0.12); color: var(--green);  border: 1px solid rgba(0,255,157,0.3); }
+.badge-unstable { background: rgba(255,59,92,0.15);  color: var(--red);    border: 1px solid rgba(255,59,92,0.35); animation: blink-border 1s step-end infinite; }
+.badge-offline  { background: rgba(100,100,120,0.12);color: #6b7a99;       border: 1px solid rgba(100,100,120,0.25); }
+@keyframes blink-border { 0%,100%{opacity:1;} 50%{opacity:0.55;} }
+
+/* METRIC CELLS */
+.metric-val { font-family: var(--mono); font-size: 13px; }
+.metric-val.ok   { color: var(--text); }
+.metric-val.warn { color: var(--yellow); }
+.metric-val.crit { color: var(--red); animation: blink .8s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.5;} }
+
+.device-id-btn {
+  background: none; border: none;
+  color: var(--accent); font-family: var(--mono); font-size: 12px;
+  cursor: pointer; text-decoration: underline;
+  letter-spacing: 1px; padding: 0;
+}
+.device-id-btn:hover { color: #fff; }
+
+.btn-update {
+  background: linear-gradient(135deg, #0f3460, #1f6feb);
+  border: 1px solid #2d7de0; color: #fff;
+  padding: 5px 12px; border-radius: 5px;
+  font-family: var(--ui); font-size: 12px; font-weight: 600;
+  letter-spacing: 1px; cursor: pointer; transition: all 0.2s;
+}
+.btn-update:hover { background: linear-gradient(135deg, #1f6feb, #58a6ff); box-shadow: 0 0 12px rgba(31,111,235,0.5); }
+
+/* MODAL */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.78); backdrop-filter: blur(4px);
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 10px; width: 500px; max-width: 96vw;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.85);
+  animation: modalIn 0.2s ease;
+}
+@keyframes modalIn { from{transform:scale(.95);opacity:0;} to{transform:scale(1);opacity:1;} }
+.modal-head {
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  background: var(--surface2); border-radius: 10px 10px 0 0;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-head h3 { font-family: var(--mono); font-size: 12px; letter-spacing: 2px; color: var(--accent); }
+.modal-close { background: none; border: none; color: var(--text2); font-size: 18px; cursor: pointer; }
+.modal-close:hover { color: var(--red); }
+.modal-body { padding: 18px; }
+.modal-info { font-family: var(--mono); font-size: 12px; color: var(--text2); margin-bottom: 16px; line-height: 1.8; }
+.modal-info span { color: var(--accent); }
+
+/* OTA STEP INDICATOR */
+.ota-steps {
+  display: flex; margin-bottom: 18px;
+  border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+}
+.ota-step {
+  flex: 1; padding: 8px 6px; text-align: center;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+  color: var(--text2); background: var(--surface2);
+  border-right: 1px solid var(--border);
+  transition: all 0.3s;
+}
+.ota-step:last-child { border-right: none; }
+.ota-step.active { background: rgba(0,212,255,0.1); color: var(--accent); }
+.ota-step.done   { background: rgba(0,255,157,0.08); color: var(--green); }
+.ota-step.fail   { background: rgba(255,59,92,0.08); color: var(--red); }
+.ota-step-num { font-size: 16px; display: block; margin-bottom: 2px; }
+
+.upload-zone {
+  border: 2px dashed var(--border2); border-radius: 8px;
+  padding: 24px; text-align: center; cursor: pointer;
+  transition: border-color 0.2s, background 0.2s; margin-bottom: 14px;
+}
+.upload-zone:hover { border-color: var(--accent); background: rgba(0,212,255,0.04); }
+.upload-zone.has-file { border-color: var(--green); background: rgba(0,255,157,0.04); }
+.upload-icon { font-size: 28px; margin-bottom: 8px; }
+.upload-label { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+.upload-filename { font-family: var(--mono); font-size: 12px; color: var(--green); margin-top: 6px; }
+#firmwareInput { display: none; }
+
+/* PROGRESS */
+.progress-wrap { display: none; margin-bottom: 14px; }
+.progress-wrap.visible { display: block; }
+.progress-label {
+  font-family: var(--mono); font-size: 11px; color: var(--text2);
+  margin-bottom: 6px; display: flex; justify-content: space-between;
+}
+.progress-bar-bg { background: var(--border); border-radius: 4px; height: 6px; overflow: hidden; }
+.progress-bar-fill {
+  height: 100%; border-radius: 4px; width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--green));
+  transition: width 0.3s ease;
+}
+
+/* STATUS MSG */
+.status-msg {
+  font-family: var(--mono); font-size: 11px;
+  padding: 8px 10px; border-radius: 5px;
+  margin-bottom: 12px; display: none; line-height: 1.6;
+}
+.status-msg.visible { display: block; }
+.status-msg.ok   { background: rgba(0,255,157,0.08); color: var(--green); border: 1px solid rgba(0,255,157,0.2); }
+.status-msg.err  { background: rgba(255,59,92,0.08); color: var(--red);   border: 1px solid rgba(255,59,92,0.2); }
+.status-msg.info { background: rgba(0,212,255,0.08); color: var(--accent);border: 1px solid rgba(0,212,255,0.2); }
+
+.modal-footer {
+  padding: 12px 18px; border-top: 1px solid var(--border);
+  display: flex; gap: 10px; justify-content: flex-end;
+}
+.btn-cancel {
+  background: none; border: 1px solid var(--border2);
+  color: var(--text2); padding: 7px 16px; border-radius: 5px;
+  cursor: pointer; font-family: var(--ui); font-size: 12px; font-weight: 600;
+}
+.btn-cancel:hover { border-color: var(--text2); color: var(--text); }
+.btn-confirm {
+  background: linear-gradient(135deg, #00855c, var(--green));
+  border: none; color: #000;
+  padding: 7px 18px; border-radius: 5px;
+  font-family: var(--ui); font-size: 12px; font-weight: 700;
+  letter-spacing: 1px; cursor: pointer; transition: opacity 0.2s;
+}
+.btn-confirm:hover { opacity: 0.85; }
+.btn-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* RAW MODAL */
+.raw-modal { width: 600px; }
+.raw-pre {
+  background: #000; border: 1px solid var(--border); border-radius: 6px;
+  padding: 14px; font-family: var(--mono); font-size: 12px; color: #a8d8a8;
+  max-height: 400px; overflow-y: auto; white-space: pre;
+}
+
+/* GRAPHS */
+.graph-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px;
+}
+.device-graph-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; overflow: hidden;
+}
+.device-graph-head {
+  padding: 8px 12px; background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: 2px; color: var(--accent);
+}
+.param-row { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.param-row:last-child { border-bottom: none; }
+.param-label {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 1.5px; color: var(--text2);
+  text-transform: uppercase; margin-bottom: 4px;
+  display: flex; justify-content: space-between;
+}
+.param-label span { color: var(--text); }
+canvas.sparkline { width: 100% !important; height: 50px !important; }
+
+/* LOGS */
+.logs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.log-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.log-head {
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  background: var(--surface2); display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: 2px; text-transform: uppercase; font-weight: 600;
+}
+.log-head.crit { color: var(--red);    border-bottom-color: rgba(255,59,92,0.3); }
+.log-head.warn { color: var(--yellow); border-bottom-color: rgba(255,214,0,0.3); }
+.log-head.info { color: var(--green);  border-bottom-color: rgba(0,255,157,0.3); }
+.log-count {
+  margin-left: auto; background: rgba(255,255,255,0.08);
+  border-radius: 10px; padding: 1px 7px; font-size: 11px;
+}
+.log-body { height: 300px; overflow-y: auto; padding: 8px; }
+.log-body::-webkit-scrollbar { width: 4px; }
+.log-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.log-entry {
+  border-left: 2px solid var(--border2); padding: 6px 8px;
+  margin-bottom: 6px; font-family: var(--mono); font-size: 11px;
+  background: rgba(255,255,255,0.02); border-radius: 0 4px 4px 0; line-height: 1.7;
+}
+.log-entry.crit { border-left-color: var(--red);    background: rgba(255,59,92,0.04); }
+.log-entry.warn { border-left-color: var(--yellow); background: rgba(255,214,0,0.04); }
+.log-entry.info { border-left-color: var(--green);  background: rgba(0,255,157,0.04); }
+.log-ts     { color: var(--text2); font-size: 10px; margin-bottom: 2px; }
+.log-device { color: var(--accent); font-weight: 600; }
+.log-status { color: var(--text2); }
+.log-metrics       { margin-top: 2px; }
+.log-metrics.crit-m{ color: var(--red); }
+.log-metrics.warn-m{ color: var(--yellow); }
+.log-metrics.info-m{ color: var(--green); }
+.log-ver { font-size: 10px; color: var(--text2); margin-top: 2px; }
+.empty-log { text-align: center; color: var(--text2); font-family: var(--mono); font-size: 11px; padding: 30px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⬡</div>
+    IoT DEVICE DASHBOARD
+  </div>
+  <div class="header-right">
+    <span><span class="live-dot"></span>LIVE</span>
+    <span id="clockDisp">--:--:--</span>
+    <span>v2.4.1</span>
+  </div>
+</header>
+
+<nav class="nav-tabs">
+  <button class="tab-btn active" onclick="switchTab('overview',this)">Fleet Overview</button>
+  <button class="tab-btn" onclick="switchTab('graphs',this)">Device Graphs</button>
+  <button class="tab-btn" onclick="switchTab('logs',this)">Event Logs</button>
+</nav>
+
+<main>
+  <!-- OVERVIEW TAB -->
+  <div class="tab-panel active" id="tab-overview">
+    <div class="section-header">Telemetry</div>
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">Device Status Matrix</span>
+        <span id="deviceCount" style="font-family:var(--mono);font-size:11px;color:var(--text2);">0 DEVICES</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="fleet-table">
+          <thead>
+            <tr>
+              <th>Device ID</th>
+              <th>Status</th>
+              <th>Version</th>
+              <th>CPU %</th>
+              <th>Memory %</th>
+              <th>Temp °C</th>
+              <th>Battery %</th>
+              <th>Latency ms</th>
+              <th>Error Rate</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="fleetTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRAPHS TAB -->
+  <div class="tab-panel" id="tab-graphs">
+    <div class="section-header">Device Parameter Graphs</div>
+    <div class="graph-grid" id="graphGrid"></div>
+  </div>
+
+  <!-- LOGS TAB -->
+  <div class="tab-panel" id="tab-logs">
+    <div class="section-header">Event Log Stream</div>
+    <div class="logs-grid">
+      <div class="log-card">
+        <div class="log-head crit">🔴 Critical <span class="log-count" id="critCount">0</span></div>
+        <div class="log-body" id="critBody"></div>
+      </div>
+      <div class="log-card">
+        <div class="log-head warn">🟡 Warning <span class="log-count" id="warnCount">0</span></div>
+        <div class="log-body" id="warnBody"></div>
+      </div>
+      <div class="log-card">
+        <div class="log-head info">🟢 Info <span class="log-count" id="infoCount">0</span></div>
+        <div class="log-body" id="infoBody"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ==========================================================
+     OTA UPDATE MODAL
+     Real two-step flow matching admin_tool.py:
+       Step 1 → Threshold gate
+       Step 2 → POST /api/upload-firmware  (saves latest.bin)
+       Step 3 → POST /admin/deploy/{id}    (ESP32 pulls & flashes)
+     ========================================================== -->
+<div class="modal-overlay" id="updateModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>⬆ OTA FIRMWARE UPDATE</h3>
+      <button class="modal-close" onclick="closeUpdateModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="modal-info">
+        Device: <span id="updateDeviceId">—</span><br/>
+        Current Version: <span id="updateCurrentVer">—</span><br/>
+        Status: <span id="updateDeviceStatus">—</span>
+      </div>
+
+      <div class="ota-steps">
+        <div class="ota-step" id="step1"><span class="ota-step-num">①</span>SELECT FILE</div>
+        <div class="ota-step" id="step2"><span class="ota-step-num">②</span>UPLOAD TO SERVER</div>
+        <div class="ota-step" id="step3"><span class="ota-step-num">③</span>DEPLOY</div>
+      </div>
+
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('firmwareInput').click()">
+        <div class="upload-icon">📦</div>
+        <div class="upload-label">Click to select firmware file (.bin)</div>
+        <div class="upload-filename" id="uploadFilename"></div>
+      </div>
+      <input type="file" id="firmwareInput" accept=".bin" onchange="handleFileSelect(this)"/>
+
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-label">
+          <span id="progressLabel">Uploading firmware…</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <div class="status-msg" id="statusMsg"></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" id="cancelBtn" onclick="closeUpdateModal()">Cancel</button>
+      <button class="btn-confirm" id="confirmUpdateBtn" disabled onclick="confirmUpdate()">Deploy OTA</button>
+    </div>
+  </div>
+</div>
+
+<!-- RAW PACKET MODAL -->
+<div class="modal-overlay" id="rawModal">
+  <div class="modal raw-modal">
+    <div class="modal-head">
+      <h3>📦 RAW PACKET — <span id="rawModalDeviceId"></span></h3>
+      <button class="modal-close" onclick="closeRawModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <pre class="raw-pre" id="rawModalContent"></pre>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeRawModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// THRESHOLDS — mirrors server-side logic
+// ============================================================
+const THRESH = {
+  cpu:     { warn: 75,   crit: 85   },
+  mem:     { warn: 80,   crit: 90   },
+  temp:    { warn: 65,   crit: 75   },
+  latency: { warn: 1500, crit: 2000 },
+  battery: { warn: 30,   crit: 20,  inverse: true },
+  errors:  { warn: 3,    crit: 8   }
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let charts           = {};
+let logsCrit         = [];
+let logsWarn         = [];
+let logsInfo         = [];
+let critKeys         = new Set();
+let warnKeys         = new Set();
+let updateTarget     = null;
+let selectedFirmware = null;
+let otaInProgress    = false;
+let lastDeviceData   = {};
+
+// ============================================================
+// UTILS
+// ============================================================
+function ts() {
+  return new Date().toLocaleTimeString('en-GB', { hour12: false });
+}
+
+function classify(key, val) {
+  const t = THRESH[key];
+  if (!t) return 'ok';
+  if (t.inverse) {
+    if (val <= t.crit) return 'crit';
+    if (val <= t.warn) return 'warn';
+  } else {
+    if (val >= t.crit) return 'crit';
+    if (val >= t.warn) return 'warn';
+  }
+  return 'ok';
+}
+
+function metricClass(c) {
+  return c === 'crit' ? 'crit' : c === 'warn' ? 'warn' : 'ok';
+}
+
+// ============================================================
+// DETERMINE DISPLAY STATUS
+// "Stable"   (green)  — no metric breaches any threshold
+// "Unstable" (red)    — at least one metric >= warn/crit threshold
+//  Server-provided status used as fallback for offline/updating
+// ============================================================
+function deviceDisplayStatus(d) {
+  if (!d) return { label: 'OFFLINE', cls: 'badge-offline', dot: '○' };
+
+  const rawStatus = (d.status || '').toLowerCase();
+
+  // Always show offline/updating states from the server
+  if (rawStatus === 'offline' || rawStatus === 'disconnected') {
+    return { label: 'OFFLINE', cls: 'badge-offline', dot: '○' };
+  }
+  if (rawStatus.includes('updat')) {
+    return { label: 'UPDATING', cls: 'badge-unstable', dot: '⟳' };
+  }
+
+  // Check if any telemetry parameter breaches warn or crit threshold
+  const anyBreached = (
+    classify('cpu',     d.cpu)             !== 'ok' ||
+    classify('mem',     d.mem)             !== 'ok' ||
+    classify('temp',    d.temp)            !== 'ok' ||
+    classify('latency', d.latency_ms)      !== 'ok' ||
+    classify('battery', d.battery)         !== 'ok' ||
+    classify('errors',  d.error_count || 0) !== 'ok'
+  );
+
+  if (anyBreached) {
+    return { label: 'UNSTABLE', cls: 'badge-unstable', dot: '●' };
+  }
+  return { label: 'STABLE', cls: 'badge-stable', dot: '●' };
+}
+
+// ============================================================
+// CLOCK
+// ============================================================
+setInterval(() => {
+  document.getElementById('clockDisp').textContent =
+    new Date().toLocaleTimeString('en-GB', { hour12: false });
+}, 1000);
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'graphs') rebuildGraphs();
+}
+
+// ============================================================
+// FETCH
+// ============================================================
+async function fetchData() {
+  try {
+    const res = await fetch('/api/data');
+    return await res.json();
+  } catch (e) { return null; }
+}
+
+// ============================================================
+// RENDER TABLE
+// ============================================================
+function renderTable(devices) {
+  const tbody = document.getElementById('fleetTableBody');
+  const count = Object.keys(devices).length;
+  document.getElementById('deviceCount').textContent =
+    count + ' DEVICE' + (count !== 1 ? 'S' : '');
+
+  let html = '';
+  for (const id of Object.keys(devices)) {
+    const d = devices[id];
+    const { label, cls, dot } = deviceDisplayStatus(d);
+
+    const cpuC = classify('cpu',     d.cpu);
+    const memC = classify('mem',     d.mem);
+    const tmpC = classify('temp',    d.temp);
+    const latC = classify('latency', d.latency_ms);
+    const batC = classify('battery', d.battery);
+    const errC = classify('errors',  d.error_count || 0);
+
+    html += `<tr>
+      <td><button class="device-id-btn" onclick="showRawPacket('${id}')">${id}</button></td>
+      <td><span class="badge ${cls}">${dot} ${label}</span></td>
+      <td><span style="font-family:var(--mono);font-size:12px;color:var(--text2)">${d.version || '—'}</span></td>
+      <td><span class="metric-val ${metricClass(cpuC)}">${d.cpu}%</span></td>
+      <td><span class="metric-val ${metricClass(memC)}">${d.mem}%</span></td>
+      <td><span class="metric-val ${metricClass(tmpC)}">${d.temp}°C</span></td>
+      <td><span class="metric-val ${metricClass(batC)}">${d.battery}%</span></td>
+      <td><span class="metric-val ${metricClass(latC)}">${d.latency_ms}ms</span></td>
+      <td><span class="metric-val ${metricClass(errC)}">${d.error_count || 0}</span></td>
+      <td><button class="btn-update" onclick="openUpdateModal('${id}')">Update ↑</button></td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+}
+
+// ============================================================
+// RAW PACKET MODAL
+// ============================================================
+function showRawPacket(id) {
+  const d = lastDeviceData[id];
+  if (!d) return;
+  document.getElementById('rawModalDeviceId').textContent = id;
+  document.getElementById('rawModalContent').textContent =
+    JSON.stringify({ device_id: id, ...d }, null, 2);
+  document.getElementById('rawModal').classList.add('open');
+}
+function closeRawModal() {
+  document.getElementById('rawModal').classList.remove('open');
+}
+
+// ============================================================
+// UPDATE MODAL
+// ============================================================
+function openUpdateModal(id) {
+  if (otaInProgress) return;
+  const d = lastDeviceData[id];
+  updateTarget     = { id, device: d };
+  selectedFirmware = null;
+
+  const { label } = deviceDisplayStatus(d);
+  document.getElementById('updateDeviceId').textContent     = id;
+  document.getElementById('updateCurrentVer').textContent   = d ? (d.version || '—') : '—';
+  document.getElementById('updateDeviceStatus').textContent = label;
+  document.getElementById('uploadFilename').textContent     = '';
+  document.getElementById('uploadZone').classList.remove('has-file');
+  document.getElementById('confirmUpdateBtn').disabled      = true;
+  document.getElementById('firmwareInput').value            = '';
+  document.getElementById('progressWrap').classList.remove('visible');
+  document.getElementById('statusMsg').className            = 'status-msg';
+  document.getElementById('statusMsg').textContent          = '';
+  setStep(1);
+  document.getElementById('updateModal').classList.add('open');
+}
+
+function closeUpdateModal() {
+  if (otaInProgress) return;
+  document.getElementById('updateModal').classList.remove('open');
+  updateTarget     = null;
+  selectedFirmware = null;
+}
+
+function handleFileSelect(input) {
+  if (input.files && input.files[0]) {
+    selectedFirmware = input.files[0];
+    document.getElementById('uploadFilename').textContent =
+      `✓ ${selectedFirmware.name}  (${(selectedFirmware.size / 1024).toFixed(1)} KB)`;
+    document.getElementById('uploadZone').classList.add('has-file');
+    document.getElementById('confirmUpdateBtn').disabled = false;
+    setStep(1, 'done');
+    showStatus('', '');
+  }
+}
+
+// ============================================================
+// STEP / PROGRESS / STATUS HELPERS
+// ============================================================
+function setStep(active, prevState) {
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById('step' + i);
+    el.className = 'ota-step';
+    if (i < active)  el.classList.add(prevState === 'fail' ? 'fail' : 'done');
+    if (i === active) el.classList.add('active');
+  }
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('statusMsg');
+  if (!msg) { el.className = 'status-msg'; el.textContent = ''; return; }
+  el.className = `status-msg visible ${type}`;
+  el.textContent = msg;
+}
+
+function setProgress(pct, label) {
+  document.getElementById('progressWrap').classList.add('visible');
+  document.getElementById('progressFill').style.width   = pct + '%';
+  document.getElementById('progressPct').textContent    = pct + '%';
+  document.getElementById('progressLabel').textContent  = label;
+}
+
+// ============================================================
+// POLL FOR VERSION CHANGE AFTER OTA DEPLOY
+// ESP32 reboots and sends telemetry with new version.
+// We watch /api/data until version changes or timeout (60s).
+// ============================================================
+async function pollForVersionChange(id, statusLabel, prevVer) {
+  const POLL_INTERVAL = 2000;  // check every 2s
+  const MAX_ATTEMPTS  = 30;    // 30 × 2s = 60s timeout
+  let   attempts      = 0;
+
+  const poll = async () => {
+    attempts++;
+    try {
+      const data    = await fetchData();
+      const devices = data?.devices || {};
+      const device  = devices[id];
+      const newVer  = device?.version || '';
+
+      if (newVer && newVer !== prevVer) {
+        // Version changed — OTA successful
+        addInfoLog(id, statusLabel, prevVer, newVer,
+          `OTA COMPLETE · Device rebooted with new firmware`);
+        // Update lastDeviceData so table reflects new version immediately
+        lastDeviceData = devices;
+        renderTable(devices);
+        return;
+      }
+    } catch (e) { /* ignore fetch errors during reboot */ }
+
+    if (attempts < MAX_ATTEMPTS) {
+      setTimeout(poll, POLL_INTERVAL);
+    } else {
+      // Timed out — version never changed, log it
+      addInfoLog(id, statusLabel, prevVer, prevVer,
+        `OTA TIMEOUT · Version unchanged after 60s — check device manually`);
+    }
+  };
+
+  // Start polling after a 5s delay (give ESP32 time to reboot)
+  setTimeout(poll, 5000);
+}
+
+function unlockOtaModal() {
+  otaInProgress = false;
+  document.getElementById('cancelBtn').disabled         = false;
+  document.getElementById('confirmUpdateBtn').disabled  = false;
+}
+
+// ============================================================
+// CONFIRM UPDATE
+// Mirrors admin_tool.py two-step flow:
+//   Step 2 → POST /api/upload-firmware  (server writes latest.bin)
+//   Step 3 → POST /admin/deploy/{id}    (server tells ESP32 to flash)
+// ============================================================
+async function confirmUpdate() {
+  if (!updateTarget || !selectedFirmware || otaInProgress) return;
+
+  const { id, device } = updateTarget;
+  const prevVer = device?.version || '—';
+  const { label: statusLabel } = deviceDisplayStatus(device);
+
+  // ── THRESHOLD GATE ────────────────────────────────────────
+  const blocked = [];
+  if (device) {
+    if (classify('cpu',     device.cpu)        === 'crit') blocked.push(`CPU=${device.cpu}%`);
+    if (classify('mem',     device.mem)        === 'crit') blocked.push(`MEM=${device.mem}%`);
+    if (classify('temp',    device.temp)       === 'crit') blocked.push(`TEMP=${device.temp}°C`);
+    if (classify('latency', device.latency_ms) === 'crit') blocked.push(`LATENCY=${device.latency_ms}ms`);
+    if (classify('battery', device.battery)    === 'crit') blocked.push(`BATTERY=${device.battery}%`);
+  }
+
+  if (blocked.length > 0) {
+    showStatus(`⛔ UPDATE BLOCKED — ${blocked.join(' | ')}`, 'err');
+    addInfoLog(id, statusLabel, prevVer, prevVer,
+      `UPDATE BLOCKED · Thresholds exceeded: ${blocked.join(' | ')}`);
+    return;
+  }
+
+  // ── LOCK UI ───────────────────────────────────────────────
+  otaInProgress = true;
+  document.getElementById('confirmUpdateBtn').disabled = true;
+  document.getElementById('cancelBtn').disabled        = true;
+
+  addInfoLog(id, statusLabel, prevVer, prevVer,
+    `OTA START · File: ${selectedFirmware.name} (${(selectedFirmware.size / 1024).toFixed(1)} KB)`);
+
+  // ── STEP 2: POST /api/upload-firmware ─────────────────────
+  // Server saves uploaded .bin as server/firmware/latest.bin
+  setStep(2);
+  setProgress(0, 'Uploading firmware to server…');
+  showStatus('📤 Uploading firmware to server…', 'info');
+
+  try {
+    const formData = new FormData();
+    formData.append('file', selectedFirmware, selectedFirmware.name);
+
+    // XHR gives us real upload progress
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/admin/upload-firmware');
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          setProgress(pct, `Uploading… ${pct}%`);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(xhr.responseText);
+        } else {
+          reject(new Error(`HTTP ${xhr.status} — ${xhr.responseText}`));
+        }
+      };
+      xhr.onerror = () => reject(new Error('Network error during upload'));
+      xhr.send(formData);
+    });
+
+    setProgress(100, 'Upload complete ✓');
+    setStep(2, 'done');
+    addInfoLog(id, statusLabel, prevVer, prevVer,
+      `OTA TRIGGER SENT · Firmware uploaded to server (${selectedFirmware.name})`);
+
+  } catch (err) {
+    setStep(2, 'fail');
+    showStatus(`❌ Upload failed — ${err.message}`, 'err');
+    addInfoLog(id, statusLabel, prevVer, prevVer,
+      `OTA FAILED (upload) · ${err.message}`);
+    unlockOtaModal();
+    return;
+  }
+
+  // ── STEP 3: POST /admin/deploy/{id} ───────────────────────
+  // Server contacts ESP32, tells it to GET /firmware/latest.bin and flash
+  setStep(3);
+  showStatus('⚡ Sending deploy command to ESP32…', 'info');
+  setProgress(100, 'Deploying to ESP32…');
+
+  try {
+    const deployRes  = await fetch(`/admin/deploy/${id}`, { method: 'POST' });
+    const deployJson = await deployRes.json().catch(() => ({}));
+
+    if (!deployRes.ok || deployJson.status === 'blocked') {
+      const reason = deployJson.reason || deployJson.message || `HTTP ${deployRes.status}`;
+      setStep(3, 'fail');
+      showStatus(`🛡️ Deploy blocked — ${reason}`, 'err');
+      addInfoLog(id, statusLabel, prevVer, prevVer,
+        `OTA BLOCKED (server) · ${reason}`);
+    } else {
+      setStep(3, 'done');
+      showStatus('✅ OTA deploy triggered', 'ok');
+      addInfoLog(id, statusLabel, prevVer, '…',
+        `OTA DEPLOY TRIGGERED `);
+
+      // Poll telemetry until the device reports a different version (max 60s)
+      pollForVersionChange(id, statusLabel, prevVer);
+    }
+
+  } catch (err) {
+    setStep(3, 'fail');
+    showStatus(`❌ Deploy command failed — ${err.message}`, 'err');
+    addInfoLog(id, statusLabel, prevVer, prevVer,
+      `OTA FAILED (deploy) · ${err.message}`);
+  }
+
+  unlockOtaModal();
+}
+
+// ============================================================
+// GRAPHS
+// ============================================================
+const PARAMS = [
+  { key: 'cpu',         label: 'CPU',         unit: '%',  color: '#00d4ff' },
+  { key: 'mem',         label: 'Memory',      unit: '%',  color: '#7c3aed' },
+  { key: 'temp',        label: 'Temperature', unit: '°C', color: '#f97316' },
+  { key: 'battery',     label: 'Battery',     unit: '%',  color: '#00ff9d' },
+  { key: 'latency_ms',  label: 'Latency',     unit: 'ms', color: '#ffd600' },
+  { key: 'error_count', label: 'Errors',      unit: '',   color: '#ff3b5c' },
+];
+
+function rebuildGraphs() {
+  const grid = document.getElementById('graphGrid');
+  if (grid.innerHTML !== '') return;
+  const ids = Object.keys(lastDeviceData);
+  if (ids.length === 0) {
+    grid.innerHTML = '<p style="color:var(--text2);font-family:var(--mono);font-size:12px;padding:20px;">No device data yet…</p>';
+    return;
+  }
+  grid.innerHTML = ids.map(id => `
+    <div class="device-graph-card">
+      <div class="device-graph-head">⬡ ${id}</div>
+      ${PARAMS.map(p => `
+        <div class="param-row">
+          <div class="param-label">${p.label} <span id="gval-${id}-${p.key}">—</span></div>
+          <canvas id="gc-${id}-${p.key}" class="sparkline"></canvas>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+
+  ids.forEach(id => {
+    charts[id] = {};
+    PARAMS.forEach(p => {
+      const ctx = document.getElementById(`gc-${id}-${p.key}`);
+      if (!ctx) return;
+      charts[id][p.key] = new Chart(ctx, {
+        type: 'line',
+        data: { labels: [], datasets: [{
+          data: [], borderColor: p.color,
+          backgroundColor: p.color + '18',
+          borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.4
+        }]},
+        options: {
+          animation: false, responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { x: { display: false }, y: { display: false } }
+        }
+      });
+    });
+  });
+}
+
+function updateGraphs(devices) {
+  const isActive = document.getElementById('tab-graphs').classList.contains('active');
+  if (!isActive || Object.keys(charts).length === 0) return;
+  for (const id of Object.keys(devices)) {
+    const d = devices[id];
+    if (!charts[id]) continue;
+    PARAMS.forEach(p => {
+      const ch = charts[id][p.key];
+      if (!ch) return;
+      const val = d[p.key] ?? 0;
+      const el  = document.getElementById(`gval-${id}-${p.key}`);
+      if (el) el.textContent = val + p.unit;
+      ch.data.labels.push('');
+      ch.data.datasets[0].data.push(val);
+      if (ch.data.labels.length > 25) {
+        ch.data.labels.shift();
+        ch.data.datasets[0].data.shift();
+      }
+      ch.update('none');
+    });
+  }
+}
+
+// ============================================================
+// THRESHOLD CHECKING → LOGS
+// ============================================================
+function checkThresholds(id, d) {
+  const critMetrics = [];
+  const warnMetrics = [];
+
+  function check(label, key, val, unit) {
+    const c = classify(key, val);
+    if (c === 'crit') critMetrics.push(`${label}=${val}${unit}`);
+    else if (c === 'warn') warnMetrics.push(`${label}=${val}${unit}`);
+  }
+
+  check('CPU',     'cpu',     d.cpu,              '%');
+  check('MEM',     'mem',     d.mem,              '%');
+  check('TEMP',    'temp',    d.temp,             '°C');
+  check('LATENCY', 'latency', d.latency_ms,       'ms');
+  check('BATTERY', 'battery', d.battery,          '%');
+  check('ERRORS',  'errors',  d.error_count || 0, '');
+
+  const { label: statusLabel } = deviceDisplayStatus(d);
+
+  if (critMetrics.length > 0) {
+    const key = id + '|crit|' + critMetrics.join(',');
+    if (!critKeys.has(key)) {
+      critKeys.add(key);
+      addCritLog(id, statusLabel, critMetrics);
+    }
+  }
+  if (warnMetrics.length > 0) {
+    const key = id + '|warn|' + warnMetrics.join(',');
+    if (!warnKeys.has(key)) {
+      warnKeys.add(key);
+      addWarnLog(id, statusLabel, warnMetrics);
+    }
+  }
+}
+
+// ============================================================
+// LOG BUILDERS
+// ============================================================
+function addCritLog(deviceId, status, metrics) {
+  logsCrit.unshift({ ts: ts(), deviceId, status, metrics });
+  if (logsCrit.length > 100) logsCrit.pop();
+  renderLogs();
+}
+function addWarnLog(deviceId, status, metrics) {
+  logsWarn.unshift({ ts: ts(), deviceId, status, metrics });
+  if (logsWarn.length > 100) logsWarn.pop();
+  renderLogs();
+}
+function addInfoLog(deviceId, status, prevVer, currVer, message) {
+  logsInfo.unshift({ ts: ts(), deviceId, status, prevVer, currVer, message });
+  if (logsInfo.length > 100) logsInfo.pop();
+  renderLogs();
+}
+
+function renderLogs() {
+  document.getElementById('critCount').textContent = logsCrit.length;
+  document.getElementById('critBody').innerHTML = logsCrit.length === 0
+    ? '<div class="empty-log">No critical events</div>'
+    : logsCrit.map(l => `
+      <div class="log-entry crit">
+        <div class="log-ts">${l.ts}</div>
+        <div><span class="log-device">${l.deviceId}</span>&nbsp;&nbsp;<span class="log-status">[${l.status}]</span></div>
+        <div class="log-metrics crit-m">${l.metrics.join(' · ')}</div>
+      </div>`).join('');
+
+  document.getElementById('warnCount').textContent = logsWarn.length;
+  document.getElementById('warnBody').innerHTML = logsWarn.length === 0
+    ? '<div class="empty-log">No warnings</div>'
+    : logsWarn.map(l => `
+      <div class="log-entry warn">
+        <div class="log-ts">${l.ts}</div>
+        <div><span class="log-device">${l.deviceId}</span>&nbsp;&nbsp;<span class="log-status">[${l.status}]</span></div>
+        <div class="log-metrics warn-m">${l.metrics.join(' · ')}</div>
+      </div>`).join('');
+
+  document.getElementById('infoCount').textContent = logsInfo.length;
+  document.getElementById('infoBody').innerHTML = logsInfo.length === 0
+    ? '<div class="empty-log">No info events</div>'
+    : logsInfo.map(l => `
+      <div class="log-entry info">
+        <div class="log-ts">${l.ts}</div>
+        <div><span class="log-device">${l.deviceId}</span>&nbsp;&nbsp;<span class="log-status">[${l.status}]</span></div>
+        <div class="log-metrics info-m">${l.message}</div>
+        ${l.prevVer && l.currVer && l.prevVer !== l.currVer && l.currVer !== '—'
+          ? `<div class="log-ver">v${l.prevVer} → v${l.currVer}</div>`
+          : l.prevVer ? `<div class="log-ver">Version: v${l.prevVer}</div>` : ''
+        }
+      </div>`).join('');
+}
+
+// ============================================================
+// MAIN POLL LOOP
+// ============================================================
+async function updateUI() {
+  const data = await fetchData();
+  if (!data) return;
+  const devices = data.devices || {};
+  lastDeviceData = devices;
+
+  renderTable(devices);
+
+  if (document.getElementById('tab-graphs').classList.contains('active')) {
+    if (Object.keys(charts).length === 0) rebuildGraphs();
+    updateGraphs(devices);
+  }
+
+  for (const id of Object.keys(devices)) {
+    checkThresholds(id, devices[id]);
+  }
+}
+
+renderLogs();
+setInterval(updateUI, 1000);
+updateUI();
+</script>
+</body>
+</html>
