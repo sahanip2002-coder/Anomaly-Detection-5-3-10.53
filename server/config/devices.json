@@ -1,0 +1,10 @@
+{
+    "allowed_devices": [
+        "iot-001",
+        "iot-002",
+        "sensor-03",
+        "ESP32_DEVICE_01",
+        "ESP32_DEVICE_02"
+
+    ]
+}
